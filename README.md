@@ -1,6 +1,6 @@
 # GLM-OCR Worker Service
 
-An async OCR processing service built with FastAPI that converts PDF and image files into markdown text using GLM-4V-Flash vision models.
+An async OCR processing service built with FastAPI that converts PDF and image files into markdown text using [GLM-OCR](https://huggingface.co/zai-org/GLM-OCR) — a 0.9B multimodal OCR model by ZhipuAI for text, table, and formula recognition.
 
 ## Architecture
 
@@ -155,7 +155,7 @@ curl -X DELETE http://localhost:8000/ocr/jobs/{job_id}
 
 ### HuggingFace (default)
 
-Uses the GLM-4V-Flash model via HuggingFace Gradio API:
+Uses the [GLM-OCR](https://huggingface.co/zai-org/GLM-OCR) model via HuggingFace Gradio API (prithivMLmods/GLM-OCR-Demo):
 ```bash
 export OCR_BACKEND=huggingface
 export HF_TOKEN=your_hf_token
@@ -163,8 +163,11 @@ export HF_TOKEN=your_hf_token
 
 ### Ollama
 
-Uses a local Ollama instance with a vision model:
+Uses a local Ollama instance with the GLM-OCR model:
 ```bash
+# Pull the model first
+ollama pull glm-ocr
+
 export OCR_BACKEND=ollama
 export OLLAMA_URL=http://localhost:11434
 ```

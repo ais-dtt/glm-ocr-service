@@ -9,8 +9,14 @@ logger = logging.getLogger(__name__)
 
 
 class OllamaBackend(OCRBackend):
-    def __init__(self, ollama_url: str, model: str = "llava:latest"):
-        self._ollama_url = ollama_url
+    """GLM-OCR backend via local Ollama server.
+
+    Uses the glm-ocr model (zai-org/GLM-OCR, 0.9B params).
+    Pull with: ollama pull glm-ocr
+    """
+
+    def __init__(self, ollama_url: str, model: str = "glm-ocr"):
+        self._ollama_url = ollama_url.rstrip("/")
         self._model = model
 
     async def process_image(self, image_bytes: bytes) -> str:
@@ -22,12 +28,12 @@ class OllamaBackend(OCRBackend):
         base64_str = base64.b64encode(image_bytes).decode("utf-8")
 
         try:
-            async with httpx.AsyncClient(timeout=120.0) as client:
+            async with httpx.AsyncClient(timeout=300.0) as client:
                 response = await client.post(
                     f"{self._ollama_url}/api/generate",
                     json={
                         "model": self._model,
-                        "prompt": "Extract all text from this image and format it as markdown.",
+                        "prompt": "<image>\n<|grounding|>Convert the document to markdown.",
                         "images": [base64_str],
                         "stream": False,
                     },
