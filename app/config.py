@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     MAX_FILE_SIZE_MB: int = 50
     OLLAMA_URL: str = ""
     OCR_BACKEND: str = "huggingface"
+    OCR_MODE: str = "auto"  # "auto" (text+table two-pass), "text", "table"
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 

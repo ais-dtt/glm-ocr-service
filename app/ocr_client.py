@@ -8,4 +8,6 @@ def get_ocr_backend() -> OCRBackend:
     settings = get_settings()
     if settings.OCR_BACKEND == "ollama":
         return OllamaBackend(ollama_url=settings.OLLAMA_URL)
-    return HuggingFaceBackend(hf_token=settings.HF_TOKEN)
+    return HuggingFaceBackend(
+        hf_token=settings.HF_TOKEN, mode=settings.OCR_MODE
+    )

@@ -15,10 +15,16 @@ class HuggingFaceBackend(OCRBackend):
 
     Uses the zai-org/GLM-OCR model — a 0.9B multimodal OCR model
     for text, table, and formula recognition.
+
+    Modes:
+        auto  — Two-pass: Text for markdown + Table for HTML (default)
+        text  — Text mode only (markdown output)
+        table — Table mode only (HTML output)
     """
 
-    def __init__(self, hf_token: str):
+    def __init__(self, hf_token: str, mode: str = "auto"):
         self._hf_token = hf_token
+        self._mode = mode
         self._client = None
 
     def _get_client(self) -> Client:
@@ -43,13 +49,12 @@ class HuggingFaceBackend(OCRBackend):
         return str(raw_output)
 
     async def process_image(self, image_bytes: bytes) -> str:
-        """Two-pass OCR: Text mode for markdown + Table mode for HTML tables.
+        """OCR with configurable mode.
 
-        Pass 1 (Text): Clean markdown for all content.
-        Pass 2 (Table): HTML with rowspan/colspan preserved.
-
-        Returns both combined — markdown text with an HTML table section appended.
-        Downstream consumers can use whichever format suits them.
+        auto:  Two-pass — Text for markdown, Table for HTML with
+               rowspan/colspan. Both appended in output.
+        text:  Single pass — markdown only.
+        table: Single pass — HTML table output only.
         """
         tmp_path = None
         last_error = None
@@ -63,21 +68,32 @@ class HuggingFaceBackend(OCRBackend):
                 tmp.write(image_bytes)
                 tmp.close()
 
-                # Pass 1: Text mode — always run
+                if self._mode == "table":
+                    return await self._call_ocr(tmp_path, "Table")
+
+                if self._mode == "text":
+                    return await self._call_ocr(tmp_path, "Text")
+
+                # Auto mode: two-pass
+                # Pass 1: Text mode
                 text_result = await self._call_ocr(tmp_path, "Text")
 
-                # Pass 2: Table mode — run if text has table-like content
-                has_table = ("|" in text_result and ("---" in text_result or "| :" in text_result))
+                # Pass 2: Table mode — only if tables detected
+                has_table = (
+                    "|" in text_result
+                    and ("---" in text_result or "| :" in text_result)
+                )
 
                 if has_table:
                     try:
                         table_html = await self._call_ocr(tmp_path, "Table")
                     except Exception as e:
-                        logger.warning(f"Table pass failed, text only: {e}")
+                        logger.warning(
+                            f"Table pass failed, using text only: {e}"
+                        )
                         table_html = None
 
                     if table_html and "<table" in table_html:
-                        # Append HTML tables section after the markdown
                         return (
                             text_result
                             + "\n\n<!-- HTML tables with rowspan/colspan -->\n"
