@@ -76,6 +76,7 @@ pip install -r requirements.txt
 | `DB_PATH` | Path to SQLite database file | `./ocr_jobs.db` |
 | `MAX_FILE_SIZE_MB` | Maximum upload file size in MB | `50` |
 | `OCR_BACKEND` | OCR backend to use (`huggingface` or `ollama`) | `huggingface` |
+| `OCR_MODE` | OCR mode: `auto` (text+table two-pass), `text`, `table` | `auto` |
 | `OLLAMA_URL` | Ollama server URL | `""` |
 
 You can set these via environment variables or a `.env` file.
