@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GLM-OCR Service</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #21262d;
+      --border: #30363d;
+      --text: #c9d1d9;
+      --text-muted: #8b949e;
+      --accent: #58a6ff;
+      --accent-hover: #79b8ff;
+      --success: #3fb950;
+      --warning: #d29922;
+      --error: #f85149;
+      --radius: 8px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────────── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .logo { font-size: 17px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .logo-accent { color: var(--accent); }
+    .logo-badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(88,166,255,0.15);
+      color: var(--accent);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .header-right { display: flex; align-items: center; gap: 10px; }
+
+    /* ── Health badge ──────────────────────────────────────────────────── */
+    .health-badge {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 12px;
+      cursor: pointer;
+      user-select: none;
+      transition: border-color .2s;
+    }
+    .health-badge:hover { border-color: var(--accent); }
+    .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      flex-shrink: 0;
+    }
+    .dot.ok     { background: var(--success); }
+    .dot.error  { background: var(--error); }
+    .dot.pulse  { background: var(--warning); animation: pulse 1.2s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    .btn-icon {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 5px 9px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-size: 15px;
+      line-height: 1;
+      transition: all .2s;
+    }
+    .btn-icon:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Layout ─────────────────────────────────────────────────────────── */
+    main {
+      max-width: 1160px;
+      margin: 0 auto;
+      padding: 28px 20px;
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 20px;
+    }
+    @media (max-width: 820px) { main { grid-template-columns: 1fr; } }
+
+    /* ── Cards ───────────────────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .card-head {
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .card-body { padding: 18px; }
+
+    /* ── Upload zone ──────────────────────────────────────────────────────── */
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 48px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+    }
+    .upload-zone:hover,
+    .upload-zone.over { border-color: var(--accent); background: rgba(88,166,255,.04); }
+    .upload-zone.over { border-style: solid; }
+    .upload-icon { font-size: 44px; margin-bottom: 12px; pointer-events: none; }
+    .upload-title { font-size: 15px; font-weight: 500; margin-bottom: 5px; }
+    .upload-sub { font-size: 12px; color: var(--text-muted); }
+    input[type=file] { display: none; }
+
+    /* ── Progress bar ─────────────────────────────────────────────────────── */
+    .pbar-wrap {
+      height: 3px;
+      background: var(--surface2);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 14px;
+    }
+    .pbar {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 2px;
+      transition: width .3s;
+    }
+
+    /* ── Status badge ─────────────────────────────────────────────────────── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 9px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+    .badge.queued     { background: rgba(139,148,158,.18); color: var(--text-muted);  border-color: var(--border); }
+    .badge.processing { background: rgba(210,153,34,.18);  color: var(--warning);     border-color: rgba(210,153,34,.4); }
+    .badge.completed  { background: rgba(63,185,80,.18);   color: var(--success);     border-color: rgba(63,185,80,.4); }
+    .badge.failed     { background: rgba(248,81,73,.18);   color: var(--error);       border-color: rgba(248,81,73,.4); }
+
+    /* ── Current job card ─────────────────────────────────────────────────── */
+    .job-meta {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .job-filename { font-size: 14px; font-weight: 500; word-break: break-all; }
+    .job-id-text  { font-size: 11px; color: var(--text-muted); font-family: 'Courier New', monospace; margin-top: 2px; }
+    .pages-info   { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; }
+
+    /* ── Page tabs ───────────────────────────────────────────────────────── */
+    .page-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 12px; }
+    .page-tab {
+      padding: 3px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text-muted);
+      transition: all .2s;
+    }
+    .page-tab:hover { border-color: var(--accent); color: var(--accent); }
+    .page-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+    /* ── Result area ─────────────────────────────────────────────────────── */
+    .result-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .toggle-group {
+      display: flex;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .toggle-btn {
+      padding: 4px 12px;
+      font-size: 12px;
+      border: none;
+      background: var(--surface2);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .toggle-btn.active { background: var(--accent); color: #fff; }
+    .toggle-btn:hover:not(.active) { background: var(--border); color: var(--text); }
+
+    .result-box {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      min-height: 180px;
+      max-height: 520px;
+      overflow-y: auto;
+    }
+    .result-md { font-size: 14px; line-height: 1.65; }
+    .result-md h1,.result-md h2,.result-md h3 { color: var(--text); margin: 14px 0 6px; }
+    .result-md h1 { font-size: 20px; } .result-md h2 { font-size: 17px; } .result-md h3 { font-size: 15px; }
+    .result-md p { margin-bottom: 8px; color: var(--text); }
+    .result-md ul,.result-md ol { padding-left: 20px; margin-bottom: 8px; }
+    .result-md li { margin-bottom: 3px; }
+    .result-md code {
+      background: rgba(110,118,129,.2);
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+    }
+    .result-md pre {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      padding: 12px;
+      border-radius: var(--radius);
+      overflow-x: auto;
+      margin: 8px 0;
+    }
+    .result-md pre code { background: none; padding: 0; }
+    .result-md table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 13px; }
+    .result-md th,.result-md td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; }
+    .result-md th { background: var(--surface); }
+    .result-md blockquote {
+      border-left: 3px solid var(--accent);
+      padding-left: 12px;
+      color: var(--text-muted);
+      margin: 8px 0;
+    }
+    .result-raw {
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: var(--text);
+      line-height: 1.55;
+    }
+
+    /* ── Buttons ─────────────────────────────────────────────────────────── */
+    .btn {
+      padding: 5px 13px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      transition: all .2s;
+      white-space: nowrap;
+    }
+    .btn:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); color: #fff; }
+
+    /* ── Job history sidebar ──────────────────────────────────────────────── */
+    .sidebar-sticky { position: sticky; top: 68px; }
+    .job-list { list-style: none; max-height: calc(100vh - 180px); overflow-y: auto; }
+    .job-item {
+      padding: 11px 16px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .job-item:last-child { border-bottom: none; }
+    .job-item:hover { background: var(--surface2); }
+    .job-item.active { background: rgba(88,166,255,.08); border-left: 3px solid var(--accent); padding-left: 13px; }
+    .job-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .job-row  { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 4px; }
+    .job-time { font-size: 11px; color: var(--text-muted); }
+    .job-empty { padding: 28px 16px; text-align: center; color: var(--text-muted); font-size: 13px; }
+
+    /* ── Modals ──────────────────────────────────────────────────────────── */
+    .modal-bg {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.65);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 9000;
+      opacity: 0; pointer-events: none;
+      transition: opacity .2s;
+    }
+    .modal-bg.open { opacity: 1; pointer-events: all; }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      width: 460px; max-width: 92vw;
+      transform: scale(.95);
+      transition: transform .2s;
+    }
+    .modal-bg.open .modal { transform: scale(1); }
+    .modal-hd {
+      padding: 15px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .modal-title { font-size: 15px; font-weight: 600; }
+    .modal-bd { padding: 18px; }
+    .modal-ft { padding: 14px 18px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+
+    .form-group { margin-bottom: 14px; }
+    .form-label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 5px; color: var(--text-muted); }
+    .form-input {
+      width: 100%; padding: 7px 11px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text); font-size: 13px;
+      outline: none; transition: border-color .2s;
+    }
+    .form-input:focus { border-color: var(--accent); }
+    .form-hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+    /* ── Health stats grid ────────────────────────────────────────────────── */
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .stat-box {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+    }
+    .stat-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); }
+    .stat-value { font-size: 26px; font-weight: 700; margin-top: 3px; color: var(--text); }
+    .stat-sub   { font-size: 11px; color: var(--text-muted); margin-top: 12px; }
+
+    /* ── Toast ───────────────────────────────────────────────────────────── */
+    #toasts {
+      position: fixed; bottom: 20px; right: 20px;
+      display: flex; flex-direction: column; gap: 7px;
+      z-index: 9999;
+    }
+    .toast {
+      padding: 9px 15px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      animation: fadeUp .25s ease;
+      max-width: 280px;
+    }
+    .toast.success { border-color: var(--success); color: var(--success); }
+    .toast.error   { border-color: var(--error);   color: var(--error); }
+    @keyframes fadeUp { from{transform:translateY(8px);opacity:0} to{transform:translateY(0);opacity:1} }
+
+    /* ── Spinner ─────────────────────────────────────────────────────────── */
+    .spinner {
+      display: inline-block; width: 12px; height: 12px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      vertical-align: middle;
+      margin-right: 4px;
+    }
+    @keyframes spin { to{transform:rotate(360deg)} }
+
+    .hidden { display: none !important; }
+
+    /* ── Scrollbar ───────────────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: var(--surface2); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+  </style>
+</head>
+<body>
+
+<!-- ─── Header ──────────────────────────────────────────────────────────── -->
+<header>
+  <div class="logo">
+    <span class="logo-accent">GLM</span>-OCR
+    <span class="logo-badge">Service</span>
+  </div>
+  <div class="header-right">
+    <div class="health-badge" id="healthBadge" onclick="openModal('healthModal')">
+      <div class="dot pulse" id="healthDot"></div>
+      <span id="healthText">Checking…</span>
+    </div>
+    <button class="btn-icon" onclick="openModal('settingsModal')" title="Settings">⚙</button>
+  </div>
+</header>
+
+<!-- ─── Main layout ──────────────────────────────────────────────────────── -->
+<main>
+
+  <!-- Left: upload + result -->
+  <div>
+    <!-- Upload card -->
+    <div class="card">
+      <div class="card-head">Upload Document</div>
+      <div class="card-body">
+        <div class="upload-zone" id="uploadZone" tabindex="0" role="button" aria-label="Upload file">
+          <div class="upload-icon">📄</div>
+          <div class="upload-title">Drop file here, or click to browse</div>
+          <div class="upload-sub">PDF · PNG · JPEG · TIFF · BMP · WebP &nbsp;·&nbsp; Max 50 MB</div>
+          <div class="pbar-wrap hidden" id="uploadPbarWrap">
+            <div class="pbar" id="uploadPbar" style="width:0%"></div>
+          </div>
+        </div>
+        <input type="file" id="fileInput" accept=".pdf,.png,.jpg,.jpeg,.tiff,.tif,.bmp,.webp">
+      </div>
+    </div>
+
+    <!-- Active job card (hidden until a job is active) -->
+    <div class="card hidden" id="jobCard" style="margin-top:16px;">
+      <div class="card-head">
+        <span>OCR Result</span>
+        <span class="badge queued" id="jobBadge">Queued</span>
+      </div>
+      <div class="card-body">
+        <div class="job-meta">
+          <div>
+            <div class="job-filename" id="jobFilename">—</div>
+            <div class="job-id-text" id="jobIdText"></div>
+          </div>
+        </div>
+
+        <!-- Processing progress -->
+        <div id="jobProcessing">
+          <div class="pages-info" id="pagesInfo">Queued…</div>
+          <div class="pbar-wrap"><div class="pbar" id="jobPbar" style="width:0%"></div></div>
+        </div>
+
+        <!-- Completed result -->
+        <div id="jobResult" class="hidden">
+          <div class="page-tabs" id="pageTabs"></div>
+          <div class="result-toolbar">
+            <div class="toggle-group">
+              <button class="toggle-btn active" id="btnMd" onclick="setMode('md')">Markdown</button>
+              <button class="toggle-btn"        id="btnRaw" onclick="setMode('raw')">Raw</button>
+            </div>
+            <button class="btn" onclick="copyResult()">Copy</button>
+          </div>
+          <div class="result-box">
+            <div class="result-md"  id="resultMd"></div>
+            <pre class="result-raw hidden" id="resultRaw"></pre>
+          </div>
+        </div>
+
+        <!-- Failed -->
+        <div id="jobFailed" class="hidden">
+          <p style="color:var(--error);font-size:13px;">⚠ OCR processing failed. Please try again.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: job history sidebar -->
+  <div>
+    <div class="card sidebar-sticky">
+      <div class="card-head">
+        <span>Job History</span>
+        <button class="btn" style="font-size:11px;padding:2px 8px;" onclick="loadHistory()">↻</button>
+      </div>
+      <ul class="job-list" id="jobList">
+        <li class="job-empty">No jobs yet</li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<!-- ─── Settings modal ───────────────────────────────────────────────────── -->
+<div class="modal-bg" id="settingsModal" onclick="bgClick(event,'settingsModal')">
+  <div class="modal">
+    <div class="modal-hd">
+      <div class="modal-title">Settings</div>
+      <button class="btn-icon" onclick="closeModal('settingsModal')">✕</button>
+    </div>
+    <div class="modal-bd">
+      <div class="form-group">
+        <label class="form-label" for="apiInput">API Base URL</label>
+        <input class="form-input" type="url" id="apiInput" placeholder="http://localhost:8000">
+        <div class="form-hint">URL of your GLM-OCR FastAPI backend (no trailing slash)</div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn" onclick="closeModal('settingsModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSettings()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Health modal ─────────────────────────────────────────────────────── -->
+<div class="modal-bg" id="healthModal" onclick="bgClick(event,'healthModal')">
+  <div class="modal">
+    <div class="modal-hd">
+      <div class="modal-title">Service Health</div>
+      <button class="btn-icon" onclick="closeModal('healthModal')">✕</button>
+    </div>
+    <div class="modal-bd">
+      <div class="stat-grid">
+        <div class="stat-box">
+          <div class="stat-label">Status</div>
+          <div class="stat-value" id="hStatus">—</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Workers</div>
+          <div class="stat-value" id="hWorkers">—</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Active</div>
+          <div class="stat-value" id="hActive">—</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Queue</div>
+          <div class="stat-value" id="hQueue">—</div>
+        </div>
+      </div>
+      <div class="stat-sub">Database: <code id="hDb" style="font-size:11px;">—</code></div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-primary" onclick="checkHealth()">Refresh</button>
+      <button class="btn" onclick="closeModal('healthModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Toasts ────────────────────────────────────────────────────────────── -->
+<div id="toasts"></div>
+
+<script>
+// ── Config ────────────────────────────────────────────────────────────────
+const DEFAULT_API = 'http://localhost:8000';
+let apiBase = localStorage.getItem('glmApiBase') || DEFAULT_API;
+
+// ── State ─────────────────────────────────────────────────────────────────
+let currentJobId  = null;
+let pollTimer     = null;
+let resultPages   = [];
+let activePage    = 0;
+let viewMode      = 'md';
+
+// ── Init ──────────────────────────────────────────────────────────────────
+document.getElementById('apiInput').value = apiBase;
+checkHealth();
+setInterval(checkHealth, 15000);
+loadHistory();
+setInterval(loadHistory, 20000);
+
+// ── Upload zone wiring ────────────────────────────────────────────────────
+const zone  = document.getElementById('uploadZone');
+const input = document.getElementById('fileInput');
+
+zone.addEventListener('click', () => input.click());
+zone.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') input.click(); });
+
+zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('over'); });
+zone.addEventListener('dragleave', ()  => zone.classList.remove('over'));
+zone.addEventListener('drop', e => {
+  e.preventDefault();
+  zone.classList.remove('over');
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+
+input.addEventListener('change', e => {
+  if (e.target.files.length) handleFile(e.target.files[0]);
+  input.value = '';
+});
+
+// ── File upload ───────────────────────────────────────────────────────────
+async function handleFile(file) {
+  const EXT_RE = /\.(pdf|png|jpe?g|tiff?|bmp|webp)$/i;
+  if (!EXT_RE.test(file.name)) { toast('Unsupported file type', 'error'); return; }
+  if (file.size > 50 * 1024 * 1024) { toast('File exceeds 50 MB limit', 'error'); return; }
+
+  const wrap = document.getElementById('uploadPbarWrap');
+  const bar  = document.getElementById('uploadPbar');
+  wrap.classList.remove('hidden');
+  bar.style.width = '15%';
+
+  try {
+    const fd = new FormData();
+    fd.append('file', file);
+    bar.style.width = '45%';
+
+    const res = await apiFetch('/ocr/submit', { method: 'POST', body: fd });
+    bar.style.width = '85%';
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Upload failed' }));
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    bar.style.width = '100%';
+    setTimeout(() => wrap.classList.add('hidden'), 600);
+
+    toast(`Submitted — ${data.total_pages} page(s)`, 'success');
+    beginTracking(data.job_id, file.name);
+    loadHistory();
+  } catch (e) {
+    wrap.classList.add('hidden');
+    toast(e.message, 'error');
+  }
+}
+
+// ── Job tracking ──────────────────────────────────────────────────────────
+function beginTracking(jobId, filename) {
+  stopPoll();
+  currentJobId = jobId;
+  resultPages  = [];
+  activePage   = 0;
+
+  const card = document.getElementById('jobCard');
+  card.classList.remove('hidden');
+  document.getElementById('jobFilename').textContent   = filename || jobId;
+  document.getElementById('jobIdText').textContent     = jobId;
+  document.getElementById('jobResult').classList.add('hidden');
+  document.getElementById('jobFailed').classList.add('hidden');
+  document.getElementById('jobProcessing').classList.remove('hidden');
+  setBadge('queued');
+  updateProgress({ total_pages: 1, completed_pages: 0, status: 'queued' });
+
+  pollTimer = setInterval(() => pollStatus(jobId), 2000);
+  pollStatus(jobId);
+}
+
+async function pollStatus(jobId) {
+  try {
+    const res = await apiFetch(`/ocr/status/${jobId}`);
+    if (!res.ok) return;
+    const d = await res.json();
+    setBadge(d.status);
+    updateProgress(d);
+
+    if (d.status === 'completed') {
+      stopPoll();
+      await fetchResult(jobId);
+      loadHistory();
+    } else if (d.status === 'failed') {
+      stopPoll();
+      document.getElementById('jobProcessing').classList.add('hidden');
+      document.getElementById('jobFailed').classList.remove('hidden');
+      loadHistory();
+    }
+  } catch (_) { /* swallow poll errors */ }
+}
+
+function stopPoll() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+}
+
+function updateProgress(d) {
+  const total = d.total_pages  || 1;
+  const done  = d.completed_pages || 0;
+  const pct   = total > 0 ? Math.round((done / total) * 100) : 0;
+  document.getElementById('jobPbar').style.width = pct + '%';
+  const statusLabel = { queued: 'Queued', processing: 'Processing…', completed: 'Done', failed: 'Failed' };
+  document.getElementById('pagesInfo').textContent =
+    `${statusLabel[d.status] || d.status}  —  ${done} / ${total} page(s)`;
+}
+
+async function fetchResult(jobId) {
+  try {
+    const res = await apiFetch(`/ocr/result/${jobId}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    resultPages = (data.pages || []).sort((a, b) => a.page_number - b.page_number);
+    document.getElementById('jobProcessing').classList.add('hidden');
+    document.getElementById('jobResult').classList.remove('hidden');
+    buildTabs();
+    showPage(0);
+  } catch (e) { toast('Failed to load result', 'error'); }
+}
+
+// ── Result display ────────────────────────────────────────────────────────
+function buildTabs() {
+  const el = document.getElementById('pageTabs');
+  el.innerHTML = '';
+  if (resultPages.length <= 1) return;
+  resultPages.forEach((p, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'page-tab' + (i === 0 ? ' active' : '');
+    btn.textContent = `Page ${p.page_number}`;
+    btn.onclick = () => showPage(i);
+    el.appendChild(btn);
+  });
+}
+
+function showPage(idx) {
+  activePage = idx;
+  const p = resultPages[idx];
+  if (!p) return;
+  document.querySelectorAll('.page-tab').forEach((t, i) => t.classList.toggle('active', i === idx));
+  const text = p.markdown_text || '';
+  document.getElementById('resultMd').innerHTML  = marked.parse(text);
+  document.getElementById('resultRaw').textContent = text;
+}
+
+function setMode(mode) {
+  viewMode = mode;
+  document.getElementById('btnMd').classList.toggle('active', mode === 'md');
+  document.getElementById('btnRaw').classList.toggle('active', mode === 'raw');
+  document.getElementById('resultMd').classList.toggle('hidden',  mode !== 'md');
+  document.getElementById('resultRaw').classList.toggle('hidden', mode !== 'raw');
+}
+
+function copyResult() {
+  const p = resultPages[activePage];
+  if (!p) return;
+  navigator.clipboard.writeText(p.markdown_text || '').then(() => toast('Copied!', 'success'));
+}
+
+function setBadge(status) {
+  const el = document.getElementById('jobBadge');
+  el.className = `badge ${status}`;
+  el.textContent = { queued: 'Queued', processing: 'Processing', completed: 'Completed', failed: 'Failed' }[status] || status;
+}
+
+// ── Job history ───────────────────────────────────────────────────────────
+async function loadHistory() {
+  try {
+    const res = await apiFetch('/ocr/jobs?page_size=50');
+    if (!res.ok) return;
+    const data = await res.json();
+    renderHistory(data.jobs || []);
+  } catch (_) { /* backend offline */ }
+}
+
+function renderHistory(jobs) {
+  const ul = document.getElementById('jobList');
+  if (!jobs.length) {
+    ul.innerHTML = '<li class="job-empty">No jobs yet</li>';
+    return;
+  }
+  ul.innerHTML = jobs.map(j => `
+    <li class="job-item ${j.job_id === currentJobId ? 'active' : ''}"
+        onclick="openHistoryJob(${JSON.stringify(j.job_id)}, ${JSON.stringify(j.original_filename || j.job_id)})">
+      <div class="job-name">${esc(j.original_filename || j.job_id)}</div>
+      <div class="job-row">
+        <span class="badge ${j.status}">${j.status}</span>
+        <span class="job-time">${timeAgo(j.created_at)}</span>
+      </div>
+    </li>
+  `).join('');
+}
+
+async function openHistoryJob(jobId, filename) {
+  stopPoll();
+  currentJobId = jobId;
+  resultPages  = [];
+  activePage   = 0;
+
+  const card = document.getElementById('jobCard');
+  card.classList.remove('hidden');
+  document.getElementById('jobFilename').textContent = filename;
+  document.getElementById('jobIdText').textContent   = jobId;
+  document.getElementById('jobResult').classList.add('hidden');
+  document.getElementById('jobFailed').classList.add('hidden');
+  document.getElementById('jobProcessing').classList.remove('hidden');
+
+  try {
+    const res = await apiFetch(`/ocr/status/${jobId}`);
+    if (!res.ok) return;
+    const d = await res.json();
+    setBadge(d.status);
+    updateProgress(d);
+
+    if (d.status === 'completed') {
+      await fetchResult(jobId);
+    } else if (d.status === 'failed') {
+      document.getElementById('jobProcessing').classList.add('hidden');
+      document.getElementById('jobFailed').classList.remove('hidden');
+    } else {
+      pollTimer = setInterval(() => pollStatus(jobId), 2000);
+    }
+    loadHistory();
+  } catch (e) { toast('Failed to load job', 'error'); }
+}
+
+// ── Health check ──────────────────────────────────────────────────────────
+async function checkHealth() {
+  const dot = document.getElementById('healthDot');
+  const txt = document.getElementById('healthText');
+  dot.className = 'dot pulse';
+
+  try {
+    const res = await apiFetch('/health');
+    if (!res.ok) throw new Error();
+    const d = await res.json();
+
+    dot.className = 'dot ok';
+    txt.textContent = `${d.worker_count}W · Q:${d.queue_depth}`;
+
+    document.getElementById('hStatus').textContent  = d.status || '—';
+    document.getElementById('hWorkers').textContent = d.worker_count ?? '—';
+    document.getElementById('hActive').textContent  = d.active_workers ?? '—';
+    document.getElementById('hQueue').textContent   = d.queue_depth ?? '—';
+    document.getElementById('hDb').textContent      = d.db_path || '—';
+  } catch (_) {
+    dot.className = 'dot error';
+    txt.textContent = 'Offline';
+  }
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────
+function saveSettings() {
+  const v = document.getElementById('apiInput').value.trim().replace(/\/$/, '');
+  if (!v) { toast('URL cannot be empty', 'error'); return; }
+  apiBase = v;
+  localStorage.setItem('glmApiBase', apiBase);
+  closeModal('settingsModal');
+  toast('Settings saved', 'success');
+  checkHealth();
+}
+
+// ── Modals ────────────────────────────────────────────────────────────────
+function openModal(id) {
+  if (id === 'settingsModal') document.getElementById('apiInput').value = apiBase;
+  document.getElementById(id).classList.add('open');
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function bgClick(e, id) { if (e.target === e.currentTarget) closeModal(id); }
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.querySelectorAll('.modal-bg.open').forEach(m => m.classList.remove('open'));
+});
+
+// ── Fetch helper ──────────────────────────────────────────────────────────
+function apiFetch(path, opts) {
+  return fetch(apiBase.replace(/\/$/, '') + path, opts);
+}
+
+// ── Toasts ────────────────────────────────────────────────────────────────
+function toast(msg, type = '') {
+  const c = document.getElementById('toasts');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 3200);
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function timeAgo(iso) {
+  if (!iso) return '';
+  try {
+    const secs = (Date.now() - new Date(iso)) / 1000;
+    if (secs < 5)    return 'just now';
+    if (secs < 60)   return Math.floor(secs) + 's ago';
+    if (secs < 3600) return Math.floor(secs / 60) + 'm ago';
+    if (secs < 86400)return Math.floor(secs / 3600) + 'h ago';
+    return new Date(iso).toLocaleDateString();
+  } catch { return ''; }
+}
+</script>
+</body>
+</html>
