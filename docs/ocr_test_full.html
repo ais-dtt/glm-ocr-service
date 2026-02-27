@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&family=Noto+Sans:wght@400;700&family=Noto+Sans+Mono&display=swap');
+  body { font-family: 'Noto Sans', 'Noto Serif TC', sans-serif; margin: 35px 50px; color: #222; font-size: 14px; line-height: 1.6; }
+  h1 { text-align: center; font-size: 24px; margin-bottom: 3px; }
+  .subtitle { text-align: center; font-size: 12px; color: #666; margin-bottom: 25px; }
+  h2 { font-size: 17px; border-bottom: 2px solid #333; padding-bottom: 4px; margin-top: 22px; }
+  h3 { font-size: 14px; margin-top: 15px; }
+  table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 13px; }
+  th, td { border: 1px solid #444; padding: 6px 10px; text-align: center; }
+  th { background: #e8e8e8; font-weight: 700; }
+  .formula { font-family: 'Noto Sans Mono', monospace; background: #f5f5f5; padding: 3px 8px; border-radius: 3px; display: inline-block; margin: 2px 0; }
+  .code-block { font-family: 'Noto Sans Mono', monospace; background: #1e1e1e; color: #d4d4d4; padding: 12px 15px; border-radius: 6px; font-size: 12px; white-space: pre; margin: 10px 0; overflow-x: auto; }
+  .code-block .kw { color: #569cd6; }
+  .code-block .str { color: #ce9178; }
+  .code-block .fn { color: #dcdcaa; }
+  .code-block .cm { color: #6a9955; }
+  .poem { margin: 8px 0 8px 15px; font-family: 'Noto Serif TC', serif; }
+  .poem-title { font-weight: 700; font-size: 15px; }
+  .poem-author { font-size: 12px; color: #555; }
+  .poem-line { font-size: 14px; line-height: 1.9; margin-left: 10px; }
+  .special { background: #f9f9f9; padding: 8px 12px; border-left: 3px solid #666; margin: 8px 0; font-size: 13px; }
+  ul, ol { margin: 5px 0; padding-left: 25px; }
+  li { margin: 3px 0; }
+  .page-break { page-break-before: always; }
+  .footer { text-align: center; font-size: 9px; color: #999; margin-top: 30px; }
+</style>
+</head>
+<body>
+
+<h1>OCR Comprehensive Test Document</h1>
+<div class="subtitle">English · Chinese · Tables · Formulas · Code · Special Characters</div>
+
+<!-- Section 1: English Text -->
+<h2>1. English Text</h2>
+<p>Artificial intelligence (AI) has revolutionized document processing. Modern OCR systems leverage vision-language models (VLMs) to understand complex layouts including tables, mathematical formulas, and multilingual text. This document is designed to test extraction accuracy across multiple dimensions simultaneously.</p>
+
+<p>Key capabilities being tested:</p>
+<ol>
+  <li>Layout detection and reading order preservation</li>
+  <li>Table structure recognition (rows, columns, headers)</li>
+  <li>Mathematical formula extraction</li>
+  <li>Multi-language text recognition (English + Traditional Chinese)</li>
+  <li>Code block preservation with syntax</li>
+  <li>Special characters, currencies, and URLs</li>
+</ol>
+
+<!-- Section 2: Data Table -->
+<h2>2. OCR Model Comparison</h2>
+<table>
+  <tr><th>Model</th><th>Parameters</th><th>OmniDocBench Score</th><th>Speed (pages/s)</th><th>Cost</th></tr>
+  <tr><td>GLM-OCR</td><td>0.9B</td><td>94.62%</td><td>1.86</td><td>$0.03/1M tokens</td></tr>
+  <tr><td>DeepSeek-OCR-2</td><td>3.0B</td><td>91.09%</td><td>~2.3</td><td>$0.01/1K tokens</td></tr>
+  <tr><td>MinerU 2.5</td><td>1.2B</td><td>90.67%</td><td>2.12</td><td>Free (open source)</td></tr>
+  <tr><td>GPT-4o Vision</td><td>~200B</td><td>93.1%</td><td>~1.0</td><td>$5.00/1M tokens</td></tr>
+  <tr><td>Tesseract 5.x</td><td>N/A</td><td>~78.5%</td><td>0.8</td><td>Free (open source)</td></tr>
+</table>
+
+<!-- Section 3: Financial Table -->
+<h2>3. Financial Data</h2>
+<table>
+  <tr><th>Quarter</th><th>Revenue</th><th>COGS</th><th>Gross Margin</th><th>OpEx</th><th>Net Income</th></tr>
+  <tr><td>Q1 2024</td><td>$12.5M</td><td>$4.2M</td><td>66.4%</td><td>$5.1M</td><td>$3.2M</td></tr>
+  <tr><td>Q2 2024</td><td>$14.8M</td><td>$4.9M</td><td>66.9%</td><td>$5.4M</td><td>$4.5M</td></tr>
+  <tr><td>Q3 2024</td><td>$16.2M</td><td>$5.3M</td><td>67.3%</td><td>$5.8M</td><td>$5.1M</td></tr>
+  <tr><td>Q4 2024</td><td>$18.9M</td><td>$6.1M</td><td>67.7%</td><td>$6.2M</td><td>$6.6M</td></tr>
+  <tr><td><strong>FY 2024</strong></td><td><strong>$62.4M</strong></td><td><strong>$20.5M</strong></td><td><strong>67.1%</strong></td><td><strong>$22.5M</strong></td><td><strong>$19.4M</strong></td></tr>
+</table>
+
+<!-- Section 4: Mathematical Formulas -->
+<h2>4. Mathematical Formulas</h2>
+<ul>
+  <li>Euler's identity: <span class="formula">e^(iπ) + 1 = 0</span></li>
+  <li>Quadratic formula: <span class="formula">x = (−b ± √(b² − 4ac)) / 2a</span></li>
+  <li>Gaussian integral: <span class="formula">∫₋∞^∞ e^(−x²) dx = √π</span></li>
+  <li>Bayes' theorem: <span class="formula">P(A|B) = P(B|A) · P(A) / P(B)</span></li>
+  <li>Cross-entropy loss: <span class="formula">L = −Σᵢ yᵢ · log(pᵢ)</span></li>
+  <li>Softmax function: <span class="formula">σ(zᵢ) = e^(zᵢ) / Σⱼ e^(zⱼ)</span></li>
+  <li>Matrix multiplication: <span class="formula">C = A × B, where Cᵢⱼ = Σₖ Aᵢₖ · Bₖⱼ</span></li>
+</ul>
+
+<div class="page-break"></div>
+
+<!-- Section 5: Chinese Text (Tang Poems) -->
+<h2>5. 中文測試 — 唐詩三首</h2>
+
+<div class="poem">
+  <div class="poem-title">靜夜思</div>
+  <div class="poem-author">【李白】</div>
+  <div class="poem-line">床前明月光，疑是地上霜。</div>
+  <div class="poem-line">舉頭望明月，低頭思故鄉。</div>
+</div>
+
+<div class="poem">
+  <div class="poem-title">登鸛雀樓</div>
+  <div class="poem-author">【王之渙】</div>
+  <div class="poem-line">白日依山盡，黃河入海流。</div>
+  <div class="poem-line">欲窮千里目，更上一層樓。</div>
+</div>
+
+<div class="poem">
+  <div class="poem-title">楓橋夜泊</div>
+  <div class="poem-author">【張繼】</div>
+  <div class="poem-line">月落烏啼霜滿天，江楓漁火對愁眠。</div>
+  <div class="poem-line">姑蘇城外寒山寺，夜半鐘聲到客船。</div>
+</div>
+
+<h3>中文段落</h3>
+<p style="font-family: 'Noto Serif TC', serif;">人工智能技術正在深刻改變文檔處理領域。光學字符識別（OCR）系統已從傳統的基於規則的方法演進到基於深度學習的視覺語言模型。這些模型能夠理解複雜的文檔佈局，包括表格、公式和多語言文本。主要挑戰包括：手寫體識別、低質量掃描文檔處理、以及保持原始文檔的閱讀順序。</p>
+
+<!-- Section 6: Code Snippet -->
+<h2>6. Code Snippet</h2>
+<div class="code-block"><span class="kw">def</span> <span class="fn">extract_text</span>(pdf_path: <span class="fn">str</span>) -> <span class="fn">dict</span>:
+    <span class="str">"""Extract structured content from PDF using GLM-OCR."""</span>
+    <span class="kw">from</span> gradio_client <span class="kw">import</span> Client, handle_file
+
+    client = Client(<span class="str">"prithivMLmods/GLM-OCR-Demo"</span>, token=HF_TOKEN)
+    raw_output, rendered_md = client.<span class="fn">predict</span>(
+        image=<span class="fn">handle_file</span>(pdf_path),
+        task=<span class="str">"Text"</span>,
+        api_name=<span class="str">"/process_image"</span>,
+    )
+    <span class="kw">return</span> {<span class="str">"raw"</span>: raw_output, <span class="str">"markdown"</span>: rendered_md}</div>
+
+<!-- Section 7: Special Characters -->
+<h2>7. Special Characters &amp; Edge Cases</h2>
+<div class="special">
+  Currency: $100.50 | €85.30 | £72.15 | ¥12,800 | HK$780.00<br>
+  Email: test.user@example.com | Phone: +852-1234-5678<br>
+  URL: https://github.com/opendatalab/MinerU<br>
+  Fractions: ½, ¾, ⅛ | Percentages: 99.97%<br>
+  Date formats: 2024-12-25 | 25/12/2024 | Dec 25, 2024<br>
+  Units: 100kg, 3.14m/s², 25°C, 1024MB, 10Gbps<br>
+  Symbols: © 2024 OpenClaw™ | α β γ δ ε | → ← ↑ ↓ | ★ ✓ ✗
+</div>
+
+<!-- Section 8: Mixed Chinese-English Table -->
+<h2>8. 中英對照表</h2>
+<table>
+  <tr><th>中文名稱</th><th>English Name</th><th>參數量</th><th>準確率</th></tr>
+  <tr><td>通義千問</td><td>Qwen-VL</td><td>7B</td><td>89.3%</td></tr>
+  <tr><td>深度求索</td><td>DeepSeek-OCR</td><td>3B</td><td>91.1%</td></tr>
+  <tr><td>智譜清言</td><td>GLM-OCR</td><td>0.9B</td><td>94.6%</td></tr>
+  <tr><td>書生浦語</td><td>InternVL</td><td>26B</td><td>92.8%</td></tr>
+</table>
+
+<div class="footer">OCR Comprehensive Test Document · Generated 2026-02-27 · Page 2/2</div>
+
+</body>
+</html>
