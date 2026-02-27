@@ -59,6 +59,12 @@ class WorkerManager:
 
         while not self._stop_event.is_set():
             try:
+                # Step 1: Find and claim a job
+                page_job_id = None
+                parent_job_id = None
+                page_number = None
+                image_data = None
+
                 async with AsyncSessionLocal() as db:
                     page_job = await get_next_queued_page(db)
                     if page_job is None:
@@ -66,55 +72,68 @@ class WorkerManager:
                         continue
 
                     claimed = await claim_page_job(db, page_job.id, worker_id)
+                    await db.commit()
                     if not claimed:
                         continue  # Another worker got it
 
+                    page_job_id = page_job.id
+                    parent_job_id = page_job.parent_job_id
+                    page_number = page_job.page_number
+                    image_data = page_job.image_data
+
+                logger.info(
+                    f"[{worker_id}] Processing page job {page_job_id} "
+                    f"(page {page_number})"
+                )
+
+                async with self._lock:
+                    self._active_count += 1
+
+                try:
+                    # Step 2: Process OCR
+                    markdown_text = await ocr_backend.process_image(image_data)
+
+                    # Step 3: Save result
+                    async with AsyncSessionLocal() as db:
+                        await update_page_job_result(
+                            db, page_job_id, markdown_text, "completed"
+                        )
+                        await check_and_update_parent_status(
+                            db, parent_job_id
+                        )
+                        await db.commit()
                     logger.info(
-                        f"[{worker_id}] Processing page job {page_job.id} "
-                        f"(page {page_job.page_number})"
+                        f"[{worker_id}] Completed page job {page_job_id}"
                     )
-
+                except OCRProcessingError as e:
+                    logger.error(
+                        f"[{worker_id}] OCR failed for page job "
+                        f"{page_job_id}: {e}"
+                    )
+                    async with AsyncSessionLocal() as db:
+                        await update_page_job_result(
+                            db, page_job_id, None, "failed", str(e)
+                        )
+                        await check_and_update_parent_status(
+                            db, parent_job_id
+                        )
+                        await db.commit()
+                except Exception as e:
+                    logger.error(
+                        f"[{worker_id}] Unexpected error: {e}",
+                        exc_info=True,
+                    )
+                    async with AsyncSessionLocal() as db:
+                        await update_page_job_result(
+                            db, page_job_id, None, "failed", str(e)
+                        )
+                        await check_and_update_parent_status(
+                            db, parent_job_id
+                        )
+                        await db.commit()
+                finally:
                     async with self._lock:
-                        self._active_count += 1
-
-                    try:
-                        markdown_text = await ocr_backend.process_image(
-                            page_job.image_data
-                        )
-                        await update_page_job_result(
-                            db, page_job.id, markdown_text, "completed"
-                        )
-                        await check_and_update_parent_status(
-                            db, page_job.parent_job_id
-                        )
-                        logger.info(
-                            f"[{worker_id}] Completed page job {page_job.id}"
-                        )
-                    except OCRProcessingError as e:
-                        logger.error(
-                            f"[{worker_id}] OCR failed for page job "
-                            f"{page_job.id}: {e}"
-                        )
-                        await update_page_job_result(
-                            db, page_job.id, None, "failed", str(e)
-                        )
-                        await check_and_update_parent_status(
-                            db, page_job.parent_job_id
-                        )
-                    except Exception as e:
-                        logger.error(
-                            f"[{worker_id}] Unexpected error: {e}",
-                            exc_info=True,
-                        )
-                        await update_page_job_result(
-                            db, page_job.id, None, "failed", str(e)
-                        )
-                        await check_and_update_parent_status(
-                            db, page_job.parent_job_id
-                        )
-                    finally:
-                        async with self._lock:
-                            self._active_count -= 1
+                        self._active_count -= 1
 
             except Exception as e:
                 logger.error(
