@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     DB_PATH: str = "./ocr_jobs.db"
     MAX_FILE_SIZE_MB: int = 50
     OLLAMA_URL: str = ""
-    OCR_BACKEND: str = "huggingface"
+    OCR_BACKEND: str = "huggingface"  # "huggingface" (GLM-OCR), "deepseek", "ollama"
     OCR_MODE: str = "auto"  # "auto" (text+table two-pass), "text", "table"
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
