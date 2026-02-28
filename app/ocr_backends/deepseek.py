@@ -49,6 +49,32 @@ class DeepSeekBackend(OCRBackend):
         )
         return str(result[0])
 
+    @staticmethod
+    def _fix_latex_dollars(text: str) -> str:
+        r"""Fix DeepSeek's LaTeX escaping of dollar signs.
+
+        DeepSeek interprets $45.2M as inline LaTeX, producing:
+          \(45.2M  in one cell and  \)12.8M  in the next.
+
+        Fix: replace \( or \) followed by digits/currency content with $.
+        Preserve real LaTeX like \(x^2 + y^2\) which has paired delimiters
+        with math operators inside.
+        """
+        import re
+
+        # \( followed by digit, comma, or dot → currency $ sign
+        text = re.sub(r"\\\((?=[\d,.])", "$", text)
+
+        # \) followed by digit, comma, or dot → currency $ sign
+        text = re.sub(r"\\\)(?=[\d,.])", "$", text)
+
+        # \) at end of content that looks like currency
+        # e.g. "15,700/mo (Staging)\)" → "$15,700/mo (Staging)"
+        # The \) here closes a fake LaTeX that started with \( elsewhere
+        text = re.sub(r"\\\)(?=\s*<)", "$", text)
+
+        return text
+
     async def process_image(self, image_bytes: bytes) -> str:
         """OCR with configurable mode.
 
@@ -69,6 +95,7 @@ class DeepSeekBackend(OCRBackend):
                 tmp.close()
 
                 result = await self._call_ocr(tmp_path, "Markdown")
+                result = self._fix_latex_dollars(result)
                 return result
 
             except Exception as e:
