@@ -1,13 +1,10 @@
 import asyncio
-import base64
-import io
 import logging
 import re
 import tempfile
 import os
 
 from gradio_client import Client, handle_file
-from PIL import Image
 
 from app.ocr_backends.base import OCRBackend, OCRProcessingError
 
@@ -100,7 +97,6 @@ class DeepSeekBackend(OCRBackend):
 
                 result = await self._call_ocr(tmp_path, "Markdown")
                 result = self._fix_latex_dollars(result)
-                result = self._extract_inline_images(result, image_bytes)
                 return result
 
             except Exception as e:
@@ -120,64 +116,3 @@ class DeepSeekBackend(OCRBackend):
         raise OCRProcessingError(
             f"DeepSeek OCR failed after 3 attempts: {last_error}"
         )
-
-    @staticmethod
-    def _extract_inline_images(text: str, page_image_bytes: bytes) -> str:
-        """Extract image regions detected by DeepSeek and embed as base64.
-
-        DeepSeek outputs placeholder tags like:
-          <img src="imgs/img_in_image_box_X1_Y1_X2_Y2.jpg">
-
-        This method:
-        1. Parses bounding box coordinates from the filename
-        2. Crops that region from the original page image
-        3. Replaces the placeholder with a base64 data URI
-        """
-        img_pattern = re.compile(
-            r'<img\s+src="imgs/img[^"]*?_(\d+)_(\d+)_(\d+)_(\d+)\.\w+"[^>]*>'
-        )
-
-        matches = list(img_pattern.finditer(text))
-        if not matches:
-            return text
-
-        try:
-            page_img = Image.open(io.BytesIO(page_image_bytes))
-        except Exception as e:
-            logger.warning(f"Failed to open page image for cropping: {e}")
-            return text
-
-        for match in reversed(matches):  # reverse to preserve positions
-            x1, y1, x2, y2 = (
-                int(match.group(1)),
-                int(match.group(2)),
-                int(match.group(3)),
-                int(match.group(4)),
-            )
-
-            try:
-                # Clamp to image bounds
-                x1 = max(0, min(x1, page_img.width))
-                y1 = max(0, min(y1, page_img.height))
-                x2 = max(0, min(x2, page_img.width))
-                y2 = max(0, min(y2, page_img.height))
-
-                if x2 <= x1 or y2 <= y1:
-                    continue
-
-                cropped = page_img.crop((x1, y1, x2, y2))
-                buf = io.BytesIO()
-                cropped.save(buf, format="PNG")
-                b64 = base64.b64encode(buf.getvalue()).decode("ascii")
-
-                replacement = (
-                    f'<img src="data:image/png;base64,{b64}" '
-                    f'alt="extracted image ({x1},{y1})-({x2},{y2})" />'
-                )
-                text = text[:match.start()] + replacement + text[match.end():]
-            except Exception as e:
-                logger.warning(
-                    f"Failed to crop image region ({x1},{y1})-({x2},{y2}): {e}"
-                )
-
-        return text
