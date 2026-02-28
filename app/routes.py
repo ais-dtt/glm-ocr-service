@@ -16,6 +16,8 @@ from app.crud import (
     list_jobs,
 )
 from app.database import get_db
+import re
+
 from app.schemas import (
     HealthResponse,
     JobListResponse,
@@ -23,6 +25,7 @@ from app.schemas import (
     JobStatusResponse,
     JobSubmitResponse,
     PageResult,
+    Section,
 )
 
 logger = logging.getLogger(__name__)
@@ -140,6 +143,58 @@ async def get_job_status(job_id: str, db: AsyncSession = Depends(get_db)):
     )
 
 
+def _parse_sections(pages: list[PageResult]) -> list[Section]:
+    """Parse markdown headings into structured sections across all pages."""
+    heading_re = re.compile(r"^(#{1,6})\s+(.+)$", re.MULTILINE)
+    sections: list[Section] = []
+
+    for page in pages:
+        if not page.markdown_text:
+            continue
+
+        text = page.markdown_text
+        matches = list(heading_re.finditer(text))
+
+        if not matches:
+            # No headings — entire page is one section
+            content = text.strip()
+            if content:
+                sections.append(Section(
+                    heading="(untitled)",
+                    level=0,
+                    page=page.page_number,
+                    content=content,
+                ))
+            continue
+
+        # Content before first heading
+        pre = text[: matches[0].start()].strip()
+        if pre:
+            sections.append(Section(
+                heading="(untitled)",
+                level=0,
+                page=page.page_number,
+                content=pre,
+            ))
+
+        # Each heading and its content until the next heading
+        for i, m in enumerate(matches):
+            level = len(m.group(1))
+            heading = m.group(2).strip()
+            start = m.end()
+            end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+            content = text[start:end].strip()
+
+            sections.append(Section(
+                heading=heading,
+                level=level,
+                page=page.page_number,
+                content=content,
+            ))
+
+    return sections
+
+
 @ocr_router.get("/result/{job_id}", response_model=JobResultResponse)
 async def get_job_result(job_id: str, db: AsyncSession = Depends(get_db)):
     job = await get_job(db, job_id)
@@ -159,11 +214,15 @@ async def get_job_result(job_id: str, db: AsyncSession = Depends(get_db)):
         key=lambda p: p.page_number,
     )
 
+    sections = _parse_sections(pages)
+
     return JobResultResponse(
         job_id=job.job_id,
         status=job.status,
         pages=pages,
+        sections=sections,
         total_pages=job.total_pages,
+        total_sections=len(sections),
     )
 
 

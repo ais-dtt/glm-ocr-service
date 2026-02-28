@@ -26,11 +26,20 @@ class PageResult(BaseModel):
     status: str
 
 
+class Section(BaseModel):
+    heading: str
+    level: int  # 1=h1, 2=h2, 3=h3, etc.
+    page: int
+    content: str  # full content under this heading (including sub-sections)
+
+
 class JobResultResponse(BaseModel):
     job_id: str
     status: str
     pages: List[PageResult]
+    sections: List[Section]
     total_pages: int
+    total_sections: int
 
 
 class JobListItem(BaseModel):
