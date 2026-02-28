@@ -75,7 +75,7 @@ pip install -r requirements.txt
 | `HF_TOKEN` | HuggingFace API token | `""` |
 | `DB_PATH` | Path to SQLite database file | `./ocr_jobs.db` |
 | `MAX_FILE_SIZE_MB` | Maximum upload file size in MB | `50` |
-| `OCR_BACKEND` | OCR backend: `huggingface` (GLM-OCR), `deepseek` (DeepSeek-OCR-2), `ollama` | `huggingface` |
+| `OCR_BACKEND` | OCR backend: `deepseek` (DeepSeek-OCR-2), `huggingface` (GLM-OCR), `ollama` | `deepseek` |
 | `OCR_MODE` | OCR mode: `auto` (text+table two-pass), `text`, `table` | `auto` |
 | `OLLAMA_URL` | Ollama server URL | `""` |
 
