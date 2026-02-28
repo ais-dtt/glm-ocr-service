@@ -1,0 +1,141 @@
+version: "3.8"
+
+# GLM-OCR / DeepSeek-OCR Service Stack
+# 
+# Services:
+#   1. vllm-deepseek  - DeepSeek-OCR-2 model server (GPU required)
+#   2. vllm-glm       - GLM-OCR model server (GPU required, optional)
+#   3. ocr-api        - FastAPI + async workers
+#
+# Usage:
+#   # DeepSeek only (recommended):
+#   docker compose up vllm-deepseek ocr-api
+#
+#   # Both models:
+#   docker compose up
+#
+#   # HuggingFace backend (no GPU, uses HF Spaces):
+#   docker compose up ocr-api
+#
+# Requirements:
+#   - NVIDIA GPU with 24GB VRAM (for vLLM)
+#   - nvidia-container-toolkit installed
+#   - HF_TOKEN env var (for HF backend or model download)
+
+services:
+
+  # ── DeepSeek-OCR-2 via vLLM (3B, ~7GB VRAM) ──────────────────────────
+  vllm-deepseek:
+    image: vllm/vllm-openai:latest
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    ports:
+      - "8001:8000"
+    volumes:
+      - model-cache:/root/.cache/huggingface
+    environment:
+      - HUGGING_FACE_HUB_TOKEN=${HF_TOKEN}
+    command: >
+      --model deepseek-ai/DeepSeek-OCR
+      --trust-remote-code
+      --dtype bfloat16
+      --gpu-memory-utilization 0.90
+      --max-num-seqs 128
+      --max-num-batched-tokens 8192
+      --max-model-len 8192
+      --logits-processors vllm.model_executor.models.deepseek_ocr:NGramPerReqLogitsProcessor
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s  # model download + load takes time
+    restart: unless-stopped
+
+  # ── GLM-OCR via vLLM (0.9B, ~2GB VRAM) ───────────────────────────────
+  # Optional — only start if you need GLM-OCR alongside DeepSeek
+  vllm-glm:
+    image: vllm/vllm-openai:latest
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    ports:
+      - "8002:8000"
+    volumes:
+      - model-cache:/root/.cache/huggingface
+    environment:
+      - HUGGING_FACE_HUB_TOKEN=${HF_TOKEN}
+    command: >
+      --model zai-org/GLM-OCR
+      --trust-remote-code
+      --dtype bfloat16
+      --gpu-memory-utilization 0.50
+      --max-num-seqs 64
+      --max-num-batched-tokens 4096
+      --max-model-len 4096
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    restart: unless-stopped
+    profiles:
+      - full  # only starts with: docker compose --profile full up
+
+  # ── OCR API Server + Workers ──────────────────────────────────────────
+  ocr-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ocr-data:/data
+    environment:
+      # ── Backend selection ──
+      # "deepseek" (HF Spaces), "huggingface" (HF Spaces), "ollama" (self-hosted)
+      - OCR_BACKEND=${OCR_BACKEND:-deepseek}
+      - OCR_MODE=${OCR_MODE:-auto}
+      
+      # ── HuggingFace backend (default, no GPU needed) ──
+      - HF_TOKEN=${HF_TOKEN}
+      
+      # ── Self-hosted vLLM backend ──
+      # To use local vLLM instead of HF Spaces, set:
+      #   OCR_BACKEND=ollama
+      #   OLLAMA_URL=http://vllm-deepseek:8000
+      # The Ollama backend works with any OpenAI-compatible API
+      - OLLAMA_URL=${OLLAMA_URL:-http://vllm-deepseek:8000}
+      
+      # ── Worker config ──
+      - NUM_WORKERS=${NUM_WORKERS:-2}
+      - DB_PATH=/data/ocr_jobs.db
+      - MAX_FILE_SIZE_MB=${MAX_FILE_SIZE_MB:-50}
+    depends_on:
+      vllm-deepseek:
+        condition: service_healthy
+        required: false  # API can start without vLLM (uses HF Spaces)
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+volumes:
+  model-cache:
+    driver: local
+  ocr-data:
+    driver: local
