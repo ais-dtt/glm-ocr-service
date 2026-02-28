@@ -43,6 +43,7 @@ class JobResultResponse(BaseModel):
 class JobSectionsResponse(BaseModel):
     job_id: str
     status: str
+    document_name: str
     sections: List[Section]
     total_sections: int
 

@@ -249,6 +249,7 @@ async def get_job_sections(job_id: str, db: AsyncSession = Depends(get_db)):
     return JobSectionsResponse(
         job_id=job.job_id,
         status=job.status,
+        document_name=job.original_filename,
         sections=sections,
         total_sections=len(sections),
     )
