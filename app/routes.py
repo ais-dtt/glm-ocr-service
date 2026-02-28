@@ -22,6 +22,7 @@ from app.schemas import (
     HealthResponse,
     JobListResponse,
     JobResultResponse,
+    JobSectionsResponse,
     JobStatusResponse,
     JobSubmitResponse,
     PageResult,
@@ -197,6 +198,35 @@ def _parse_sections(pages: list[PageResult]) -> list[Section]:
 
 @ocr_router.get("/result/{job_id}", response_model=JobResultResponse)
 async def get_job_result(job_id: str, db: AsyncSession = Depends(get_db)):
+    """Get raw markdown result per page."""
+    job = await get_job(db, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    page_jobs = await get_page_jobs(db, job_id)
+    pages = sorted(
+        [
+            PageResult(
+                page_number=p.page_number,
+                markdown_text=p.markdown_text,
+                status=p.status,
+            )
+            for p in page_jobs
+        ],
+        key=lambda p: p.page_number,
+    )
+
+    return JobResultResponse(
+        job_id=job.job_id,
+        status=job.status,
+        pages=pages,
+        total_pages=job.total_pages,
+    )
+
+
+@ocr_router.get("/sections/{job_id}", response_model=JobSectionsResponse)
+async def get_job_sections(job_id: str, db: AsyncSession = Depends(get_db)):
+    """Get structured sections parsed from markdown headings."""
     job = await get_job(db, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -216,12 +246,10 @@ async def get_job_result(job_id: str, db: AsyncSession = Depends(get_db)):
 
     sections = _parse_sections(pages)
 
-    return JobResultResponse(
+    return JobSectionsResponse(
         job_id=job.job_id,
         status=job.status,
-        pages=pages,
         sections=sections,
-        total_pages=job.total_pages,
         total_sections=len(sections),
     )
 

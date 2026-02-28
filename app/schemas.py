@@ -37,8 +37,13 @@ class JobResultResponse(BaseModel):
     job_id: str
     status: str
     pages: List[PageResult]
-    sections: List[Section]
     total_pages: int
+
+
+class JobSectionsResponse(BaseModel):
+    job_id: str
+    status: str
+    sections: List[Section]
     total_sections: int
 
 
